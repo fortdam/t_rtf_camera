@@ -6,9 +6,31 @@
 
   <FrameLayout
     android:id="@+id/camera_preview"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
+    android:layout_width="540px"
+    android:layout_height="850px"
     android:layout_weight="1"
     />
+  
+  <ImageView 
+      android:id="@+id/bnw_preview"
+      android:layout_width="540px"
+      android:layout_height="850px"
+      android:layout_toRightOf="@id/camera_preview"
+      />
+  
+    <ImageView 
+      android:id="@+id/sepia_tone_preview"
+      android:layout_width="540px"
+      android:layout_height="850px"
+      android:layout_below="@id/camera_preview"
+      />
+    
+      <ImageView 
+      android:id="@+id/revert_preview"
+      android:layout_width="540px"
+      android:layout_height="850px"
+      android:layout_toRightOf = "@id/sepia_tone_preview"
+      android:layout_below="@id/camera_preview"
+      />
 
 </RelativeLayout>
