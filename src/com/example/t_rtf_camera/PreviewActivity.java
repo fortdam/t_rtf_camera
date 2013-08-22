@@ -1,5 +1,6 @@
 package com.example.t_rtf_camera;
 
+
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
@@ -12,6 +13,10 @@ import android.view.SurfaceView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.os.SystemClock;
+import android.renderscript.Allocation;
+import android.renderscript.Element;
+import android.renderscript.RenderScript;
+import android.renderscript.Type;
 
 public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 
@@ -34,6 +39,8 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
         mBlackWhiteView = (ImageView) findViewById(R.id.bnw_preview);
         mSepiaToneView = (ImageView) findViewById(R.id.sepia_tone_preview);
         mRevertView = (ImageView) findViewById(R.id.revert_preview);
+        
+        mRS = RenderScript.create(this);
 	}
 
 	@Override
@@ -92,6 +99,36 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		int[] colorsSepiaTone = new int[width*height];
 		int[] colorsRevert = new int[width*height];
 		
+		if (null == mInAllocation){
+			Type.Builder inTypeBuilder = new Type.Builder(mRS, Element.U8_2(mRS));
+			Type.Builder outTypeBuilder = new Type.Builder(mRS, Element.I32(mRS));
+			
+			inTypeBuilder.setX(width).setY(height);
+			outTypeBuilder.setX(width).setY(height);
+			
+			Type inType = inTypeBuilder.create();
+			Type outType = outTypeBuilder.create();
+			
+			mInAllocation = Allocation.createTyped(mRS, inType);
+			
+		    mBNWAllocation = Allocation.createTyped(mRS, outType);
+		    mSepiaToneAllocation = Allocation.createTyped(mRS, outType);
+		    mRevertAllocation = Allocation.createTyped(mRS, outType);
+		    
+		    mScript = new ScriptC_filter(mRS, getResources(), R.raw.filter);
+		}
+		
+		mInAllocation.copyFromUnchecked(data);
+		
+		mScript.forEach_blackwhite(mInAllocation, mBNWAllocation);
+		mScript.forEach_sepiatone(mInAllocation, mSepiaToneAllocation);
+		mScript.forEach_revert(mInAllocation, mRevertAllocation);
+		
+		mBNWAllocation.copyTo(colorsBNW);
+		mSepiaToneAllocation.copyTo(colorsSepiaTone);
+		mRevertAllocation.copyTo(colorsRevert);
+		
+		/*
 		for (int i=0; i<width*height; i++){
 			
 			int red = (data[i*2+1] & 0xf8);
@@ -116,20 +153,22 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 			colorsRevert[pos] |= 0xff ^ blue;
 		}
 		
+		*/
+		
 		midTime = SystemClock.uptimeMillis();
 		
-		Bitmap bmpBNW = Bitmap.createBitmap(colorsBNW, height, width, Bitmap.Config.ARGB_8888);
+		Bitmap bmpBNW = Bitmap.createBitmap(colorsBNW, width, height, Bitmap.Config.ARGB_8888);
 		mBlackWhiteView.setImageBitmap(bmpBNW);
 		
-		Bitmap bmpSepiaTone = Bitmap.createBitmap(colorsSepiaTone, height, width, Bitmap.Config.ARGB_8888);
+		Bitmap bmpSepiaTone = Bitmap.createBitmap(colorsSepiaTone, width, height, Bitmap.Config.ARGB_8888);
 		mSepiaToneView.setImageBitmap(bmpSepiaTone);
 		
-		Bitmap bmpRevert = Bitmap.createBitmap(colorsRevert, height, width, Bitmap.Config.ARGB_8888);
+		Bitmap bmpRevert = Bitmap.createBitmap(colorsRevert, width, height, Bitmap.Config.ARGB_8888);
 		mRevertView.setImageBitmap(bmpRevert);
 		
 		endTime = SystemClock.uptimeMillis();
 		
-		Log.e("Tang zhiming", "data process="+(midTime-startTime)+" , total="+(endTime-startTime));
+		Log.e("Tang zhiming", " data process="+(midTime-startTime)+" , total="+(endTime-startTime));
 		
 		
 	}
@@ -141,4 +180,12 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 	private ImageView mBlackWhiteView;
 	private ImageView mSepiaToneView;
 	private ImageView mRevertView;
+	
+    private RenderScript mRS;
+    private ScriptC_filter mScript = null;
+    private Allocation mInAllocation = null;
+    
+    private Allocation mBNWAllocation = null;
+    private Allocation mSepiaToneAllocation = null;
+    private Allocation mRevertAllocation = null;
 }
