@@ -165,47 +165,19 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		synchronized(mColorsBlackWhite){
 			mBlackWhiteAllocation.copyTo(mColorsBlackWhite);
 		}
-		mBNWPreview.drawFrame(mColorsBlackWhite);
+		mBNWPreview.drawFrame(mColorsBlackWhite, true);
 		
 		mScript.forEach_sepiatone(mRotateAllocation, mSepiaToneAllocation);
 		synchronized(mColorsSepiaTone){
 			mSepiaToneAllocation.copyTo(mColorsSepiaTone);
 		}
-		mSepiaTonePreview.drawFrame(mColorsSepiaTone);
+		mSepiaTonePreview.drawFrame(mColorsSepiaTone, true);
 		
 		mScript.forEach_revert(mRotateAllocation, mRevertAllocation);
 		synchronized(mColorsRevert){
 			mRevertAllocation.copyTo(mColorsRevert);
 		}
-		mRevertPreview.drawFrame(mColorsRevert);
-
-		
-		/*
-		for (int i=0; i<width*height; i++){
-			
-			int red = (data[i*2+1] & 0xf8);
-			int green = (data[i*2+1] & 0x07)<<5 | (data[i*2] & 0xe0)>>3;
-			int blue = (data[i*2] & 0x1f) << 3;
-			int greyScale = (red+green+blue)/3;
-			int pos = (i/width) + (i%width)*height;  //rotate 90 degree
-
-			colorsBNW[pos] = 0xff000000;
-			colorsBNW[pos] |= greyScale << 16;
-			colorsBNW[pos] |= greyScale << 8;
-			colorsBNW[pos] |= greyScale;
-			
-			colorsSepiaTone[pos] = 0xff000000;
-			colorsSepiaTone[pos] |= (min((int)(red*0.393f + green*0.769f + blue*0.189f), 255)) << 16;
-			colorsSepiaTone[pos] |= (min((int)(red*0.349f + green*0.686f + blue*0.168f), 255)) << 8;
-			colorsSepiaTone[pos] |= (min((int)(red*0.272f + green*0.534 + blue*0.131f), 255));
-			
-			colorsRevert[pos] = 0xff000000;
-			colorsRevert[pos] |= (0xff ^ red)<<16;
-			colorsRevert[pos] |= (0xff ^ green)<<8;
-			colorsRevert[pos] |= 0xff ^ blue;
-		}
-		
-		*/
+		mRevertPreview.drawFrame(mColorsRevert, true);
 		
 		midTime = SystemClock.uptimeMillis();
 		
@@ -230,12 +202,6 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 	
 	private Camera mCamera;
 	private CameraPreview mPreview;
-	
-	/*
-	private ImageView mBlackWhiteView;
-	private ImageView mSepiaToneView;
-	private ImageView mRevertView;
-	*/
 	
 	FilterPreview mBNWPreview;
 	FilterPreview mSepiaTonePreview;

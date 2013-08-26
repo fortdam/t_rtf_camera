@@ -4,6 +4,8 @@ import java.util.concurrent.Semaphore;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.os.SystemClock;
 import android.renderscript.Allocation;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
@@ -20,6 +22,8 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 	
 	private int mPicWidth = 0;
 	private int mPicHeight = 0;
+	
+	private long mLastFrameTime = 0;
 	
 	private Thread mThread = null;
 	
@@ -64,22 +68,35 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 	}
 	
 	
-	public void drawFrame(final int[] data){
+	public void drawFrame(final int[] data, final boolean debug){
 		
 		if (mSurfaceHolder == null){
 			return;
 		}
 		
+		final long curr = SystemClock.uptimeMillis();
+		final long diff = curr - mLastFrameTime;
+		mLastFrameTime = curr;
+		
 		new Thread(){
 			public void run(){
 				synchronized(data){
-					//int width = Math.min(mPicWidth, mWidth);
-					//int height = Math.min(mPicHeight, mHeight);
 					Canvas c = mSurfaceHolder.lockCanvas();
 					
-					//c.drawARGB(0xff, red, green, blue);
-					//c.scale(((float)mWidth)/mPicWidth, ((float)mHeight)/mPicHeight);
 					c.drawBitmap(data, 0, mPicWidth, 0, 0, mPicWidth, mPicHeight, false, null);
+
+					if (debug){
+						int fps = (int) (1000/diff);
+						Paint pt = new Paint();
+						pt.setColor(0xffffffff);
+						pt.setTextSize(30);
+						if (fps>=10){
+							c.drawText("fps: "+fps, 100, 100, pt);
+						}
+						else{
+							c.drawText("fps: 0"+fps, 100, 100, pt);
+						}
+					}
 					
 					mSurfaceHolder.unlockCanvasAndPost(c);
 				}
