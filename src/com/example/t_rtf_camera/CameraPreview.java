@@ -52,8 +52,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                 Camera.Size size = sizes.get(i);
             }
             
-        	
+        	//params.setPreviewSize(320, 240);
         	params.setPreviewFormat(ImageFormat.RGB_565);
+        	params.setPreviewFrameRate(30);
         	int width = params.getPreviewSize().width;
         	int height = params.getPreviewSize().height;
         	
