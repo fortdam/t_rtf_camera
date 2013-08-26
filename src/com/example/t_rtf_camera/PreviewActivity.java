@@ -154,6 +154,7 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		}
 		
 		mInAllocation.copyFromUnchecked(data);
+		camera.addCallbackBuffer(data);
 		
 		
 		mScript.bind_gInPixels(mInAllocation);

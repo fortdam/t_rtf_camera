@@ -21,6 +21,8 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private SurfaceHolder mHolder;
     private Camera mCamera;
     
+    private byte[] mPreviewDataBuffer = null;
+    
     private Camera.PreviewCallback mPreviewCallback = null;
     
     private boolean isBigScreen = false;
@@ -63,16 +65,18 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         	int width = params.getPreviewSize().width;
         	int height = params.getPreviewSize().height;
         	
+        	if (mPreviewDataBuffer == null){
+        		mPreviewDataBuffer = new byte[width*height*ImageFormat.getBitsPerPixel(ImageFormat.RGB_565)/8];
+        	}
+        	
         	mCamera.setParameters(params);
-        	
-        	byte[] buffer = new byte[width*height*2];
-        	
-        	mCamera.addCallbackBuffer(buffer);
+        	        	
+        	mCamera.addCallbackBuffer(mPreviewDataBuffer);
             
             mCamera.setPreviewDisplay(holder);
             mCamera.startPreview();         
             
-            mCamera.setPreviewCallback(mPreviewCallback);
+            mCamera.setPreviewCallbackWithBuffer(mPreviewCallback);
 
 
         } catch (IOException e) {
@@ -107,7 +111,11 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         try {
             mCamera.setPreviewDisplay(mHolder);
             mCamera.startPreview();
-        	mCamera.setPreviewCallback(mPreviewCallback);
+            if (mPreviewDataBuffer == null){
+            	
+            }
+            //mCamera.addCallbackBuffer(mPreviewDataBuffer);
+        	mCamera.setPreviewCallbackWithBuffer(mPreviewCallback);
 
         } catch (Exception e){
             Log.d(TAG, "Error starting camera preview: " + e.getMessage());
