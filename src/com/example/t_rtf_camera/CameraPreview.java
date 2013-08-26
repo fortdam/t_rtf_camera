@@ -4,12 +4,15 @@ import java.io.IOException;
 import java.util.List;
 
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.util.Log;
+import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.WindowManager;
 
 /** A basic Camera preview class */
 public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
@@ -19,6 +22,8 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private Camera mCamera;
     
     private Camera.PreviewCallback mPreviewCallback = null;
+    
+    private boolean isBigScreen = false;
 
     public CameraPreview(Context context, Camera camera, Camera.PreviewCallback callback) {
         super(context);
@@ -29,18 +34,16 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
         mHolder = getHolder();
         mHolder.addCallback(this);
         mPreviewCallback = callback;
-    }
-    
-    /*private Camera.PreviewCallback mPreviewCallback = new Camera.PreviewCallback(){
-        @Override
-        public void onPreviewFrame(byte[] data, Camera camera) {
-            //Log.d(_.TAG, "onPreviewCallback()");
-            
-			Log.e("Tang zhiming", "echo here");
-			//mCamera.setPreviewCallback(this);
-
+       
+        Activity app = (Activity)context;
+        WindowManager wm = app.getWindowManager();
+        Display disp = wm.getDefaultDisplay();
+        int width = disp.getWidth();
+        
+        if (width >= 960){
+        	isBigScreen = true; 
         }
-    };*/
+    }
 
     public void surfaceCreated(SurfaceHolder holder) {
         // The Surface has been created, now tell the camera where to draw the preview.
@@ -52,7 +55,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                 Camera.Size size = sizes.get(i);
             }
             
-        	//params.setPreviewSize(320, 240);
+            if (false == isBigScreen){
+            	params.setPreviewSize(320, 240);
+            }
         	params.setPreviewFormat(ImageFormat.RGB_565);
         	params.setPreviewFrameRate(30);
         	int width = params.getPreviewSize().width;

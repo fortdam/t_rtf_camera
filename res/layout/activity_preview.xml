@@ -1,36 +1,51 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context=".PreviewActivity" >
 
-  <FrameLayout
-    android:id="@+id/camera_preview"
-      android:layout_width="540px"
-      android:layout_height="850px"
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:layout_weight="1"
-    />
+    android:orientation="horizontal"
+    >
+	  <FrameLayout
+	    android:id="@+id/camera_preview"
+	      android:layout_width="fill_parent"
+	      android:layout_height="fill_parent"
+	      android:layout_weight="1"
+	    />
+	  
+	  <FrameLayout 
+	      android:id="@+id/bnw_preview"
+	      android:layout_width="fill_parent"
+	      android:layout_height="fill_parent"
+	      android:layout_weight="1"
+	      />
+  </LinearLayout>
   
-  <FrameLayout 
-      android:id="@+id/bnw_preview"
-      android:layout_width="540px"
-      android:layout_height="850px"
-      android:layout_toRightOf="@id/camera_preview"
-      />
-  
+
+    <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:orientation="horizontal"
+    >
     <FrameLayout 
       android:id="@+id/sepia_tone_preview"
-      android:layout_width="540px"
-      android:layout_height="850px"
-      android:layout_below="@id/camera_preview"
+      android:layout_width="fill_parent"
+      android:layout_height="fill_parent"
+      android:layout_weight="1"
       />
     
     <FrameLayout 
       android:id="@+id/revert_preview"
-      android:layout_width="540px"
-      android:layout_height="850px"
-      android:layout_toRightOf = "@id/sepia_tone_preview"
-      android:layout_below="@id/camera_preview"
+      android:layout_width="fill_parent"
+      android:layout_height="fill_parent"
+      android:layout_weight="1"
       />
+      </LinearLayout>
 
-</RelativeLayout>
+</LinearLayout>

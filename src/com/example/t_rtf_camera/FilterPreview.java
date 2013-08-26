@@ -12,7 +12,7 @@ import android.view.SurfaceView;
 public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback{
 
 	private int[] mDispData = null;
-	private SurfaceHolder mSurfaceHolder = null;
+	public SurfaceHolder mSurfaceHolder = null;
 	private Semaphore mDataReady = null;
 	
 	private int mWidth = 0;
@@ -72,14 +72,14 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 		
 		new Thread(){
 			public void run(){
-				synchronized(mSurfaceHolder){
-					int width = Math.min(mPicWidth, mWidth);
-					int height = Math.min(mPicHeight, mHeight);
+				synchronized(data){
+					//int width = Math.min(mPicWidth, mWidth);
+					//int height = Math.min(mPicHeight, mHeight);
 					Canvas c = mSurfaceHolder.lockCanvas();
 					
 					//c.drawARGB(0xff, red, green, blue);
-					c.scale(540f/width, 850f/height);
-					c.drawBitmap(data, 0, mPicWidth, 0, 0, width, height, true, null);
+					//c.scale(((float)mWidth)/mPicWidth, ((float)mHeight)/mPicHeight);
+					c.drawBitmap(data, 0, mPicWidth, 0, 0, mPicWidth, mPicHeight, false, null);
 					
 					mSurfaceHolder.unlockCanvasAndPost(c);
 				}

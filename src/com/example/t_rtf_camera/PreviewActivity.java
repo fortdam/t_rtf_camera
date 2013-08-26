@@ -12,6 +12,8 @@ import android.hardware.Camera;
 import android.util.Log;
 import android.view.Menu;
 import android.view.SurfaceView;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.os.SystemClock;
@@ -36,14 +38,12 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
         mPreview = new CameraPreview(this, mCamera, this);
                 
         FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
+        
         preview.addView(mPreview);
         
-        /*
-        mBlackWhiteView = (ImageView) findViewById(R.id.bnw_preview);
-        mSepiaToneView = (ImageView) findViewById(R.id.sepia_tone_preview);
-        mRevertView = (ImageView) findViewById(R.id.revert_preview);
-        */
         mRS = RenderScript.create(this);
+        
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 	}
 
 	@Override
@@ -139,13 +139,15 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		   mSepiaTonePreview = new FilterPreview(this, readySepiaTone, null, height, width);
 		   mRevertPreview = new FilterPreview(this, readyRevert, null, height, width);
 		    
-		    
+		    mBNWPreview.getHolder().setFixedSize(height, width);
 		    FrameLayout container = (FrameLayout)findViewById(R.id.bnw_preview);
 		    container.addView(mBNWPreview);
 		    
+		    mSepiaTonePreview.getHolder().setFixedSize(height, width);
 		    container = (FrameLayout)findViewById(R.id.sepia_tone_preview);
 		    container.addView(mSepiaTonePreview);
 		    
+		    mRevertPreview.getHolder().setFixedSize(height, width);
 		    container = (FrameLayout)findViewById(R.id.revert_preview);
 		    container.addView(mRevertPreview);
 		    
@@ -160,15 +162,21 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		mScript.forEach_root(mRowIndicesAllocaction, mRowIndicesAllocaction);
 		
 		mScript.forEach_blackwhite(mRotateAllocation, mBlackWhiteAllocation);
-		mBlackWhiteAllocation.copyTo(mColorsBlackWhite);
+		synchronized(mColorsBlackWhite){
+			mBlackWhiteAllocation.copyTo(mColorsBlackWhite);
+		}
 		mBNWPreview.drawFrame(mColorsBlackWhite);
 		
 		mScript.forEach_sepiatone(mRotateAllocation, mSepiaToneAllocation);
-		mSepiaToneAllocation.copyTo(mColorsSepiaTone);
+		synchronized(mColorsSepiaTone){
+			mSepiaToneAllocation.copyTo(mColorsSepiaTone);
+		}
 		mSepiaTonePreview.drawFrame(mColorsSepiaTone);
 		
 		mScript.forEach_revert(mRotateAllocation, mRevertAllocation);
-		mRevertAllocation.copyTo(mColorsRevert);
+		synchronized(mColorsRevert){
+			mRevertAllocation.copyTo(mColorsRevert);
+		}
 		mRevertPreview.drawFrame(mColorsRevert);
 
 		
