@@ -3,10 +3,12 @@ package com.example.t_rtf_camera;
 import java.util.concurrent.Semaphore;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.SystemClock;
 import android.renderscript.Allocation;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
@@ -24,13 +26,16 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 	private int mPicHeight = 0;
 	
 	private long mLastFrameTime = 0;
+	private long mFrameCountStartTime = 0;
+	private long mFrameCount = 0;
+	private long mDispFrameCount = 0;
 	
 	private Thread mThread = null;
 	
 	private SurfaceHolder mHolder = null;
 	
 	
-	public FilterPreview(Context context, Semaphore dataReady, int[] data, int width, int height){
+	public FilterPreview(Context context, int[] data, int width, int height){
 		super(context);
 		
 		mHolder = getHolder();
@@ -39,11 +44,6 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 		mDispData = data;
 		mPicWidth = width;
 		mPicHeight = height;
-		mDataReady = dataReady; 
-	}
-
-	public void setDisplayData(int[] data){
-		mDispData = data;
 	}
 	
 	@Override
@@ -68,22 +68,39 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 	}
 	
 	
-	public void drawFrame(final int[] data, final boolean debug){
+	public void drawFrame(final Bitmap bmp, final boolean debug){
 		
 		if (mSurfaceHolder == null){
 			return;
 		}
 		
+		
 		final long curr = SystemClock.uptimeMillis();
 		final long diff = curr - mLastFrameTime;
 		mLastFrameTime = curr;
 		
+		if (mFrameCountStartTime == 0){
+			mFrameCountStartTime = curr;
+			mFrameCount = -1;
+		}
+		else if (mFrameCount > 0){
+			mFrameCount = -1;
+		}
+		else {
+			mFrameCount--;
+			if ((curr - mFrameCountStartTime)>1000){
+				mFrameCountStartTime = curr;
+				mFrameCount = 0-mFrameCount;
+				mDispFrameCount = mFrameCount;
+			}
+		}
+		
 		new Thread(){
 			public void run(){
-				synchronized(data){
+				synchronized(bmp){
 					Canvas c = mSurfaceHolder.lockCanvas();
 					
-					c.drawBitmap(data, 0, mPicWidth, 0, 0, mPicWidth, mPicHeight, false, null);
+					c.drawBitmap(bmp, 0, 0, null);
 
 					if (debug){
 						int fps = (int) (1000/diff);
@@ -91,10 +108,10 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 						pt.setColor(0xffffffff);
 						pt.setTextSize(30);
 						if (fps>=10){
-							c.drawText("fps: "+fps, 100, 100, pt);
+							c.drawText("fps: "+fps+"/"+mDispFrameCount, 100, 100, pt);
 						}
 						else{
-							c.drawText("fps: 0"+fps, 100, 100, pt);
+							c.drawText("fps: 0"+fps+"/"+mDispFrameCount, 100, 100, pt);
 						}
 					}
 					
@@ -102,5 +119,23 @@ public class FilterPreview extends SurfaceView implements SurfaceHolder.Callback
 				}
 			}
 		}.start();
+	}
+	
+	public boolean onTouchEvent(MotionEvent event){
+		if (event.ACTION_DOWN == event.getAction()){
+			if (mActive){
+				mActive = false;
+			}
+			else {
+				mActive = true;
+			}
+		}
+		return false;
+	}
+	
+	private boolean mActive = true;
+	
+	public boolean isActive(){
+		return mActive;
 	}
 }

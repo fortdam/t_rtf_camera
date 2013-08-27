@@ -101,11 +101,11 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		if (null == mInAllocation){
 			Type.Builder inTypeBuilder = new Type.Builder(mRS, Element.U8_2(mRS));
 			Type.Builder outTypeBuilder = new Type.Builder(mRS, Element.U8_4(mRS));
-			Type.Builder resultTypeBuilder = new Type.Builder(mRS, Element.I32(mRS));
+			Type.Builder resultTypeBuilder = new Type.Builder(mRS, Element.U8_4(mRS));
 			
 			inTypeBuilder.setX(width).setY(height);
-			outTypeBuilder.setX(width).setY(height);
-			resultTypeBuilder.setX(width).setY(height);
+			outTypeBuilder.setX(height).setY(width);
+			resultTypeBuilder.setX(height).setY(width);
 			
 			Type inType = inTypeBuilder.create();
 			Type outType = outTypeBuilder.create();
@@ -114,9 +114,13 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 			mInAllocation = Allocation.createTyped(mRS, inType);	
 		    mRotateAllocation = Allocation.createTyped(mRS, outType);
 		    
-		    mBlackWhiteAllocation = Allocation.createTyped(mRS, resultType);
-		    mSepiaToneAllocation = Allocation.createTyped(mRS, resultType);
-		    mRevertAllocation = Allocation.createTyped(mRS, resultType);
+		    mBlackWhiteBmp = Bitmap.createBitmap(height,width,Bitmap.Config.ARGB_8888);
+		    mSepiaToneBmp = Bitmap.createBitmap(height,width,Bitmap.Config.ARGB_8888);
+		    mRevertBmp = Bitmap.createBitmap(height,width,Bitmap.Config.ARGB_8888);
+		    
+		    mBlackWhiteAllocation = Allocation.createFromBitmap(mRS, mBlackWhiteBmp);
+		    mSepiaToneAllocation = Allocation.createFromBitmap(mRS, mSepiaToneBmp);
+		    mRevertAllocation = Allocation.createFromBitmap(mRS, mRevertBmp);
 		    
             int[] rowIndices = new int[height];
             for (int i = 0; i < height; i++) {
@@ -129,16 +133,13 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		    
 		    mScript.set_mImageWidth(width);
 		    mScript.set_mImageHeight(height);
-		    
-		    mColorsBlackWhite = new int[width*height];
-		    mColorsSepiaTone = new int[width*height];
-		    mColorsRevert = new int[width*height];
-		    
+		    		    
 		    //will 90 rotate
-		   mBNWPreview = new FilterPreview(this, readyBlackWhite, null, height, width);
-		   mSepiaTonePreview = new FilterPreview(this, readySepiaTone, null, height, width);
-		   mRevertPreview = new FilterPreview(this, readyRevert, null, height, width);
+		   mBNWPreview = new FilterPreview(this, null, height, width);
+		   mSepiaTonePreview = new FilterPreview(this, null, height, width);
+		   mRevertPreview = new FilterPreview(this, null, height, width);
 		    
+		   
 		    mBNWPreview.getHolder().setFixedSize(height, width);
 		    FrameLayout container = (FrameLayout)findViewById(R.id.bnw_preview);
 		    container.addView(mBNWPreview);
@@ -156,42 +157,37 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 		mInAllocation.copyFromUnchecked(data);
 		camera.addCallbackBuffer(data);
 		
-		
 		mScript.bind_gInPixels(mInAllocation);
 		mScript.bind_gRotatePixels(mRotateAllocation);
 		
 		mScript.forEach_root(mRowIndicesAllocaction, mRowIndicesAllocaction);
 		
-		mScript.forEach_blackwhite(mRotateAllocation, mBlackWhiteAllocation);
-		synchronized(mColorsBlackWhite){
-			mBlackWhiteAllocation.copyTo(mColorsBlackWhite);
+		if (mBNWPreview.isActive()){
+			mScript.forEach_blackwhite(mRotateAllocation, mBlackWhiteAllocation);
+			synchronized(mBlackWhiteBmp){
+				mBlackWhiteAllocation.copyTo(mBlackWhiteBmp);
+			}
+			mBNWPreview.drawFrame(mBlackWhiteBmp, true);
 		}
-		mBNWPreview.drawFrame(mColorsBlackWhite, true);
 		
-		mScript.forEach_sepiatone(mRotateAllocation, mSepiaToneAllocation);
-		synchronized(mColorsSepiaTone){
-			mSepiaToneAllocation.copyTo(mColorsSepiaTone);
+		if (mSepiaTonePreview.isActive()){
+			mScript.forEach_sepiatone(mRotateAllocation, mSepiaToneAllocation);
+			synchronized(mSepiaToneBmp){
+				mSepiaToneAllocation.copyTo(mSepiaToneBmp);
+			}
+			mSepiaTonePreview.drawFrame(mSepiaToneBmp, true);
 		}
-		mSepiaTonePreview.drawFrame(mColorsSepiaTone, true);
 		
-		mScript.forEach_revert(mRotateAllocation, mRevertAllocation);
-		synchronized(mColorsRevert){
-			mRevertAllocation.copyTo(mColorsRevert);
+		if (mRevertPreview.isActive()){
+			mScript.forEach_revert(mRotateAllocation, mRevertAllocation);
+			synchronized(mRevertBmp){
+				mRevertAllocation.copyTo(mRevertBmp);
+			}
+			mRevertPreview.drawFrame(mRevertBmp, true);
 		}
-		mRevertPreview.drawFrame(mColorsRevert, true);
 		
 		midTime = SystemClock.uptimeMillis();
 		
-		/*
-		Bitmap bmpBNW = Bitmap.createBitmap(colorsBNW, width, height, Bitmap.Config.ARGB_8888);
-		mBlackWhiteView.setImageBitmap(bmpBNW);
-		
-		Bitmap bmpSepiaTone = Bitmap.createBitmap(colorsSepiaTone, width, height, Bitmap.Config.ARGB_8888);
-		mSepiaToneView.setImageBitmap(bmpSepiaTone);
-		
-		Bitmap bmpRevert = Bitmap.createBitmap(colorsRevert, width, height, Bitmap.Config.ARGB_8888);
-		mRevertView.setImageBitmap(bmpRevert);
-		*/
 		endTime = SystemClock.uptimeMillis();
 		
 		Log.e("Tang zhiming", "total="+(endTime-startTime));
@@ -204,17 +200,13 @@ public class PreviewActivity extends Activity implements Camera.PreviewCallback{
 	private Camera mCamera;
 	private CameraPreview mPreview;
 	
-	FilterPreview mBNWPreview;
-	FilterPreview mSepiaTonePreview;
-	FilterPreview mRevertPreview;
+	private FilterPreview mBNWPreview;
+	private FilterPreview mSepiaTonePreview;
+	private FilterPreview mRevertPreview;
 	
-	private int[] mColorsBlackWhite;
-	private int[] mColorsSepiaTone;
-	private int[] mColorsRevert;
-	
-	private Semaphore readyBlackWhite;
-	private Semaphore readySepiaTone;
-	private Semaphore readyRevert;
+	private Bitmap mBlackWhiteBmp; 
+	private Bitmap mSepiaToneBmp;
+	private Bitmap mRevertBmp;
 	
     private RenderScript mRS;
     private ScriptC_filter mScript = null;
