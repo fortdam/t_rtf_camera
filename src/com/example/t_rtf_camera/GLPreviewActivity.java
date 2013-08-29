@@ -4,12 +4,13 @@ import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
+import android.hardware.Camera;
 import android.view.Menu;
 
 
 
 public class GLPreviewActivity extends Activity {
-	
+
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -17,6 +18,7 @@ public class GLPreviewActivity extends Activity {
 		
 		mGLView = new PreviewGLSurfaceView(this);
 		setContentView(mGLView);
+
 	}
 
 
@@ -38,6 +40,7 @@ public class GLPreviewActivity extends Activity {
         // this is a good place to re-allocate them.
         mGLView.onResume();
     }
+
 
 
 	private GLSurfaceView mGLView;
