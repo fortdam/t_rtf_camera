@@ -3,6 +3,7 @@ package com.example.t_rtf_camera;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -20,10 +21,14 @@ import android.util.Log;
 public class PreviewGLRenderer implements GLSurfaceView.Renderer{
 
 	private GLCameraPreview mView;
+	
 	@Override
 	public void onDrawFrame(GL10 gl) {
 		// TODO Auto-generated method stub
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+		
+		GLPreviewActivity app = GLPreviewActivity.getAppInstance();
+		app.updateCamPreview();
 		
 		mView.draw();
 	}
@@ -63,23 +68,26 @@ class  GLCameraPreview {
             "}";
 
         private final String fragmentShaderCode =
-        	//"#extension GL_OES_EGL_image_external : require \n"+
+        	"#extension GL_OES_EGL_image_external : require \n"+
             "precision mediump float;\n" +
             "varying vec2 outTexCoord;\n" +
-            "uniform sampler2D s_texture;\n" +
+            "uniform samplerExternalOES s_texture;\n" +
             "void main() {\n" +
-            "  gl_FragColor = texture2D(s_texture, outTexCoord);\n" +
+            "  vec3 color = texture2D(s_texture, outTexCoord).rgb;\n" +
+            "  float grey = (color.r + color.g + color.b)/3.0;\n" +
+            "  vec3 greyScale = vec3(grey);\n" +
+            "  gl_FragColor = vec4(greyScale, 1.0);\n" +
             "}";
 	
-        private static float shapeCoords[] = { -0.5f,  0.5f, 0.0f,   // top left
-            -0.5f, -0.5f, 0.0f,   // bottom left
-            0.5f, -0.5f, 0.0f,   // bottom right
-            0.5f,  0.5f, 0.0f }; // top right
-        
-        private static float textureCoords[] = { 0.0f,  1.0f,   // top left
-            0.0f, 0.0f,   // bottom left
-            1.0f, 0.0f,    // bottom right
-            1.0f,  1.0f}; // top right
+        private static float shapeCoords[] = { -1.0f,  1.0f, 0.0f,   // top left
+            -1.0f, -1.0f, 0.0f,   // bottom left
+            1.0f, -1.0f, 0.0f,   // bottom right
+            1.0f,  1.0f, 0.0f }; // top right
+        //90 degree rotated
+        private static float textureCoords[] = { 0.0f,  0.0f,   // top left
+            1.0f, 0.0f,   // bottom left
+            1.0f, 1.0f,    // bottom right
+            0.0f,  1.0f}; // top right
         
         private static short drawOrder[] = { 0, 1, 2, 0, 2, 3};
          
@@ -91,13 +99,12 @@ class  GLCameraPreview {
     	private FloatBuffer mTexCoordBuffer;
     	private ShortBuffer mDrawListBuffer;
     	
-    	private SurfaceTexture mTexture = null;
     	private int mTexName = 0;
     	
-    	private Camera mCamera;
     	
-	public GLCameraPreview(final int filterType){
-		
+    private int compileShader(final int filterType){
+    	int program;
+    	
 		int vertexShader = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
 		int fragmentShader = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
 		
@@ -117,11 +124,21 @@ class  GLCameraPreview {
 			String err = GLES20.glGetShaderInfoLog(fragmentShader);
 			Log.e("t_rtf_camera:gl",err);
 		}
-		mProgram = GLES20.glCreateProgram();
-		GLES20.glAttachShader(mProgram, vertexShader);
-		GLES20.glAttachShader(mProgram, fragmentShader);
-		GLES20.glLinkProgram(mProgram);
 		
+		program = GLES20.glCreateProgram();
+		GLES20.glAttachShader(program, vertexShader);
+		GLES20.glAttachShader(program, fragmentShader);
+		GLES20.glLinkProgram(program);
+		
+		return program;
+    }
+    	
+	public GLCameraPreview(final int filterType){
+		
+		mProgram = compileShader(filterType);
+		startPreview();
+
+		/*Prepare buffer*/
 		ByteBuffer bb = ByteBuffer.allocateDirect(4*shapeCoords.length);
 		bb.order(ByteOrder.nativeOrder());
 		
@@ -141,59 +158,35 @@ class  GLCameraPreview {
 		
 		mDrawListBuffer = dlb.asShortBuffer();
 		mDrawListBuffer.put(drawOrder);
-		mDrawListBuffer.position(0);
-
-		GLES20.glUseProgram(mProgram);
-		
+		mDrawListBuffer.position(0);		
+	}
+	
+	public void startPreview(){
 		int textures[] = new int[1];
-		
-//		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
 		GLES20.glGenTextures(1, textures, 0);
 		
-//		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
+		GLPreviewActivity app = GLPreviewActivity.getAppInstance();
 		
-
-		
+		app.startCamera(textures[0]);
 		mTexName = textures[0];
-		mTexture = new SurfaceTexture(textures[0]);
-		
-
-		
-        // Create an instance of Camera
-        mCamera = getCameraInstance();
-        mCamera.setDisplayOrientation(90);
-        
-        try{
-        mCamera.setPreviewTexture(mTexture);
-        mCamera.startPreview();
-        }
-        catch(Exception e){
-        	e.printStackTrace();
-        }
 	}
 	
 	public void draw(){
 		
+		GLES20.glUseProgram(mProgram);
+		
 		int positionHandler = GLES20.glGetAttribLocation(mProgram, "vPosition");
 		int texCoordHandler = GLES20.glGetAttribLocation(mProgram, "vTexCoord");
-		int textureHandler = GLES20.glGetUniformLocation(mProgram, "s_texture");
-		
-		//mTexture.updateTexImage();
-		
-		GLES20.glEnable(GLES20.GL_TEXTURE_2D);
-
+		int textureHandler = GLES20.glGetUniformLocation(mProgram, "s_texture");		
 
 		GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-		GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTexName);
-		Bitmap bmp = Bitmap.createBitmap(500, 500, Bitmap.Config.ARGB_8888);
-		bmp.eraseColor(0xff00ffff);
-		GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0,  bmp,0);
+		GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mTexName);
 
-		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+		GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+		GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
 		
-		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-		GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+		GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+		GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 		
 		GLES20.glEnableVertexAttribArray(positionHandler);
 		
@@ -211,18 +204,10 @@ class  GLCameraPreview {
         GLES20.glUniform1i(textureHandler, 0);
 		
 		GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.length, GLES20.GL_UNSIGNED_SHORT, mDrawListBuffer);
+	
+		GLES20.glDisableVertexAttribArray(positionHandler);
+		GLES20.glDisableVertexAttribArray(texCoordHandler);
 	}
 	
 
-	/** A safe way to get an instance of the Camera object. */
-	public static Camera getCameraInstance(){
-	    Camera c = null;
-	    try {
-	        c = Camera.open(); // attempt to get a Camera instance
-	    }
-	    catch (Exception e){
-	        // Camera is not available (in use or does not exist)
-	    }
-	    return c; // returns null if camera is unavailable
-	}
 }
