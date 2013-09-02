@@ -5,13 +5,15 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
+import android.graphics.SurfaceTexture.OnFrameAvailableListener;
 import android.hardware.Camera;
 import android.view.Menu;
+import android.view.TextureView;
 import android.view.WindowManager;
 
 
 
-public class GLPreviewActivity extends Activity implements SurfaceTexture.OnFrameAvailableListener{
+public class GLPreviewActivity extends Activity implements TextureView.SurfaceTextureListener, OnFrameAvailableListener{
 
 
 	static private GLPreviewActivity appInst = null;
@@ -24,8 +26,9 @@ public class GLPreviewActivity extends Activity implements SurfaceTexture.OnFram
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
-		mGLSurfaceView = new PreviewGLSurfaceView(this);
-		setContentView(mGLSurfaceView);
+		TextureView tempView = new TextureView(this);
+		tempView.setSurfaceTextureListener(this);
+		setContentView(tempView);
 
 		appInst = this;
 		
@@ -40,7 +43,7 @@ public class GLPreviewActivity extends Activity implements SurfaceTexture.OnFram
         // If your OpenGL application is memory intensive,
         // you should consider de-allocating objects that
         // consume significant memory here.
-        mGLSurfaceView.onPause();
+        //mGLSurfaceView.onPause();
     }
 
     @Override
@@ -49,25 +52,29 @@ public class GLPreviewActivity extends Activity implements SurfaceTexture.OnFram
         // The following call resumes a paused rendering thread.
         // If you de-allocated graphic objects for onPause()
         // this is a good place to re-allocate them.
-        mGLSurfaceView.onResume();
+        //mGLSurfaceView.onResume();
     }
     
-    public void startCamera(int texture){
-    	mCamera = getCameraInstance();
-    	
-    	mSurfaceTexture = new SurfaceTexture(texture);
-    	
-    	mSurfaceTexture.setOnFrameAvailableListener(this);
-    	
-    	try{
-    		mCamera.setDisplayOrientation(90);
-    		mCamera.setPreviewTexture(mSurfaceTexture);
-    		mCamera.startPreview();
+    synchronized public void startCamera(int texture){
+    	if (null == mSurfaceTexture){
+	    	mCamera = getCameraInstance();
+	    	
+	    	mSurfaceTexture = new SurfaceTexture(texture);
+	    	
+	    	mSurfaceTexture.setOnFrameAvailableListener(this);
+	    	
+	    	try{
+	    		mCamera.setDisplayOrientation(90);
+	    		mCamera.setPreviewTexture(mSurfaceTexture);
+	    		mCamera.startPreview();
+	    	}
+	    	catch (Exception e){
+	    		e.printStackTrace();
+	    	}
     	}
-    	catch (Exception e){
-    		e.printStackTrace();
+    	else {
+    		mSurfaceTexture.attachToGLContext(texture);
     	}
-    	
     }
 
 	/** A safe way to get an instance of the Camera object. */
@@ -85,7 +92,7 @@ public class GLPreviewActivity extends Activity implements SurfaceTexture.OnFram
 	@Override
 	public void onFrameAvailable(SurfaceTexture surfaceTexture) {
 		// TODO Auto-generated method stub
-		mGLSurfaceView.requestRender();
+		//mGLSurfaceView.requestRender();
 	}
 	
 	public void updateCamPreview(){
@@ -93,10 +100,41 @@ public class GLPreviewActivity extends Activity implements SurfaceTexture.OnFram
 	}
 	
 	private Camera mCamera;
-	private GLSurfaceView mGLSurfaceView;
-	private SurfaceTexture mSurfaceTexture;
+	//private GLSurfaceView mGLSurfaceView;
+	private SurfaceTexture mSurfaceTexture = null;
+
+	@Override
+	public void onSurfaceTextureAvailable(SurfaceTexture surface, int width,
+			int height) {
+		// TODO Auto-generated method stub
+		GLCameraRenderThread render = new GLCameraRenderThread(surface);
+		render.setRegion(width, height);
+		render.start();
+	}
+
+	@Override
+	public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width,
+			int height) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+
 }
 
+/*
 class PreviewGLSurfaceView extends GLSurfaceView {
 	public PreviewGLSurfaceView(Context context){
 		super(context);
@@ -109,3 +147,4 @@ class PreviewGLSurfaceView extends GLSurfaceView {
 
 	}
 }
+*/

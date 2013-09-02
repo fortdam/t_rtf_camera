@@ -8,12 +8,22 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
+import javax.microedition.khronos.egl.EGLSurface;
+
 import android.content.Context;
+import android.graphics.SurfaceTexture;
+
+import android.opengl.EGL14;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 import android.util.Log;
 
-class  GLCameraPreview {
+public class  GLCameraRenderThread extends Thread{
 	public static final int FILTER_NONE = 0;
 	public static final int FILTER_GREY = 1;
 	public static final int FILTER_SEPIA_TONE = 2;
@@ -21,12 +31,15 @@ class  GLCameraPreview {
 	public static final int FILTER_VIGNETTE = 4;
 	public static final int FILTER_FISHEYE = 5;
 	
-    private static float shapeCoords[] = { -0.5f,  0.3f, 0.0f,   // top left
-        -0.5f, -0.3f, 0.0f,   // bottom left
-        0.5f, -0.3f, 0.0f,   // bottom right
-        0.5f,  0.3f, 0.0f }; // top right
+    private static float shapeCoords[] = { 
+    	-0.8f,  0.8f, 0.0f,   // top left
+        -0.8f, -0.8f, 0.0f,   // bottom left
+        0.8f, -0.8f, 0.0f,   // bottom right
+        0.8f,  0.8f, 0.0f }; // top right
+    
     //90 degree rotated
-    private static float textureCoords[] = { 0.0f,  1.0f,   // top left
+    private static float textureCoords[] = { 
+    	0.0f,  1.0f,   // top left
         1.0f, 1.0f,   // bottom left
         1.0f, 0.0f,    // bottom right
         0.0f,  0.0f}; // top right
@@ -36,13 +49,26 @@ class  GLCameraPreview {
     private static final int COORDS_PER_VERTEX = 3;
     private static final int TEXTURE_COORS_PER_VERTEX = 2;
         
-    private final int mProgram;
+    private int mProgram;
+    private int mTexName = 0;
+    private SurfaceTexture mSurface;
+    
+    /*For EGL Setup*/
+	private EGL10 mEgl;
+	private EGLDisplay mEglDisplay;
+	private EGLConfig mEglConfig;
+	private EGLContext mEglContext;
+	private EGLSurface mEglSurface;
+
+	/*Vertex buffers*/
     private FloatBuffer mVertexBuffer;
     private FloatBuffer mTexCoordBuffer;
     private ShortBuffer mDrawListBuffer;
-    	
-    private int mTexName = 0;
-    	
+    
+    public GLCameraRenderThread(SurfaceTexture surface){
+    	mSurface = surface;
+    }
+    
     private static String readRawTextFile(Context context, int resId){
         InputStream inputStream = context.getResources().openRawResource(resId);
             
@@ -62,7 +88,7 @@ class  GLCameraPreview {
         return text.toString();
     }	
     	
-    private int compileShader(final int filterType){
+    private int compileShader(final int type){
     	int program;
     	GLPreviewActivity app = GLPreviewActivity.getAppInstance();
     	
@@ -80,13 +106,13 @@ class  GLCameraPreview {
 		GLES20.glGetShaderiv(vertexShader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
 		if (compileStatus[0] == 0){
 			String err = GLES20.glGetShaderInfoLog(vertexShader);
-			Log.e("t_rtf_camera:gl",err);
+			throw new RuntimeException("vertex shader compile failed:"+err);
 		}
 		GLES20.glCompileShader(fragmentShader);
 		GLES20.glGetShaderiv(fragmentShader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
 		if (compileStatus[0] == 0){
 			String err = GLES20.glGetShaderInfoLog(fragmentShader);
-			Log.e("t_rtf_camera:gl",err);
+			throw new RuntimeException("fragment shader compile failed:"+err);
 		}
 		
 		program = GLES20.glCreateProgram();
@@ -97,12 +123,8 @@ class  GLCameraPreview {
 		return program;
     }
     	
-	public GLCameraPreview(final int filterType){
-		
-		mProgram = compileShader(filterType);
-		startPreview();
-
-		/*Prepare buffer*/
+	public void prepareBuffer(){
+		/*Vertex buffer*/
 		ByteBuffer bb = ByteBuffer.allocateDirect(4*shapeCoords.length);
 		bb.order(ByteOrder.nativeOrder());
 		
@@ -110,6 +132,7 @@ class  GLCameraPreview {
 		mVertexBuffer.put(shapeCoords);
 		mVertexBuffer.position(0);
 		
+		/*Vertex texture coord buffer*/
 		ByteBuffer txeb = ByteBuffer.allocateDirect(4*textureCoords.length);
 		txeb.order(ByteOrder.nativeOrder());
 		
@@ -117,6 +140,7 @@ class  GLCameraPreview {
 		mTexCoordBuffer.put(textureCoords);
 		mTexCoordBuffer.position(0);
 		
+		/*Draw list buffer*/
 		ByteBuffer dlb = ByteBuffer.allocateDirect(drawOrder.length * 2);
 		dlb.order(ByteOrder.nativeOrder());
 		
@@ -125,7 +149,7 @@ class  GLCameraPreview {
 		mDrawListBuffer.position(0);		
 	}
 	
-	public void startPreview(){
+	private void startPreview(){
 		int textures[] = new int[1];
 		GLES20.glGenTextures(1, textures, 0);
 		
@@ -135,8 +159,12 @@ class  GLCameraPreview {
 		mTexName = textures[0];
 	}
 	
-	public void draw(){
-		
+	private void updatePreview(){
+		GLPreviewActivity app = GLPreviewActivity.getAppInstance();
+		app.updateCamPreview();
+	}
+	
+	public void draw(){		
 		GLES20.glUseProgram(mProgram);
 		
 		int positionHandler = GLES20.glGetAttribLocation(mProgram, "aPosition");
@@ -163,8 +191,6 @@ class  GLCameraPreview {
                 GLES20.GL_FLOAT, false,
                 TEXTURE_COORS_PER_VERTEX*4, mTexCoordBuffer);
         
-		//float color[] = { 0.63671875f, 0.76953125f, 0.22265625f, 1.0f };
-		//GLES20.glUniform4fv(colorHandler, 1, color, 0);
         GLES20.glUniform1i(textureHandler, 0);
 		
 		GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.length, GLES20.GL_UNSIGNED_SHORT, mDrawListBuffer);
@@ -173,5 +199,92 @@ class  GLCameraPreview {
 		GLES20.glDisableVertexAttribArray(texCoordHandler);
 	}
 	
-
+	private void initGL(){
+		/*Get EGL handle*/
+		mEgl = (EGL10)EGLContext.getEGL();
+		
+		/*Get EGL display*/
+		mEglDisplay = mEgl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
+		
+		if (EGL10.EGL_NO_DISPLAY == mEglDisplay){
+			throw new RuntimeException("eglGetDisplay failed:"+GLUtils.getEGLErrorString(mEgl.eglGetError()));
+		}
+		
+		/*Initialize & Version*/
+		int versions[] = new int[2];
+		if (!mEgl.eglInitialize(mEglDisplay, versions)){
+			throw new RuntimeException("eglInitialize failed:"+GLUtils.getEGLErrorString(mEgl.eglGetError()));
+		}
+		
+		/*Configuration*/ 
+		int configsCount[] = new int[1];
+		EGLConfig configs[] = new EGLConfig[1];
+		int configSpec[] = new int[]{
+			EGL10.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+			EGL10.EGL_RED_SIZE, 8,
+			EGL10.EGL_GREEN_SIZE, 8,
+			EGL10.EGL_BLUE_SIZE, 8,
+			EGL10.EGL_ALPHA_SIZE, 8,
+			EGL10.EGL_DEPTH_SIZE, 0,
+			EGL10.EGL_STENCIL_SIZE, 0,
+			EGL10.EGL_NONE
+		};
+		
+		mEgl.eglChooseConfig(mEglDisplay, configSpec, configs, 1, configsCount);
+		if (configsCount[0] <= 0){
+			throw new RuntimeException("eglChooseConfig failed:"+GLUtils.getEGLErrorString(mEgl.eglGetError()));
+		}
+		mEglConfig = configs[0];
+		
+		/*Create Context*/
+		int contextSpec[] = new int[]{
+			EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+			EGL10.EGL_NONE
+		};
+		mEglContext = mEgl.eglCreateContext(mEglDisplay, mEglConfig, EGL10.EGL_NO_CONTEXT, contextSpec);
+		
+		if (EGL10.EGL_NO_CONTEXT == mEglContext){
+			throw new RuntimeException("eglCreateContext failed: "+GLUtils.getEGLErrorString(mEgl.eglGetError()));
+		}
+		
+		/*Create window surface*/
+		mEglSurface = mEgl.eglCreateWindowSurface(mEglDisplay, mEglConfig, mSurface, null);
+		
+		if (null == mEglSurface || EGL10.EGL_NO_SURFACE == mEglSurface){
+			throw new RuntimeException("eglCreateWindowSurface failed"+GLUtils.getEGLErrorString(mEgl.eglGetError()));
+		}
+		
+		/*Make current*/
+		if (!mEgl.eglMakeCurrent(mEglDisplay, mEglSurface, mEglSurface, mEglContext)){
+			throw new RuntimeException("eglMakeCurrent failed:"+GLUtils.getEGLErrorString(mEgl.eglGetError()));
+		}
+	}
+	
+	@Override
+	public void run(){
+		initGL();
+		
+		mProgram = compileShader(FILTER_NONE);
+		prepareBuffer();
+		
+		startPreview();
+		
+		while(true){
+			updatePreview();
+			GLES20.glViewport(0, 0, mWidth, mHeight);
+			GLES20.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+			GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+			draw();
+			if (!mEgl.eglSwapBuffers(mEglDisplay, mEglSurface)){
+				throw new RuntimeException("Cannot swap buffers");
+			}
+		}
+	}
+	int mWidth;
+	int mHeight;
+	
+	synchronized public void setRegion(int width, int height){
+		mWidth = width;
+		mHeight = height;
+	}
 }
