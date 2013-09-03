@@ -24,6 +24,8 @@ import android.opengl.GLUtils;
 import android.util.Log;
 
 public class  GLCameraRenderThread extends Thread{
+	
+	/*Filter Type Const*/
 	public static final int FILTER_NONE = 0;
 	public static final int FILTER_GREY = 1;
 	public static final int FILTER_SEPIA_TONE = 2;
@@ -32,10 +34,10 @@ public class  GLCameraRenderThread extends Thread{
 	public static final int FILTER_FISHEYE = 5;
 	
     private static float shapeCoords[] = { 
-    	-0.8f,  0.8f, 0.0f,   // top left
-        -0.8f, -0.8f, 0.0f,   // bottom left
-        0.8f, -0.8f, 0.0f,   // bottom right
-        0.8f,  0.8f, 0.0f }; // top right
+    	-0.9f,  0.9f, 0.0f,   // top left
+        -0.9f, -0.9f, 0.0f,   // bottom left
+        0.9f, -0.9f, 0.0f,   // bottom right
+        0.9f,  0.9f, 0.0f }; // top right
     
     //90 degree rotated
     private static float textureCoords[] = { 
@@ -48,7 +50,11 @@ public class  GLCameraRenderThread extends Thread{
          
     private static final int COORDS_PER_VERTEX = 3;
     private static final int TEXTURE_COORS_PER_VERTEX = 2;
-        
+    
+    /*Draw region*/
+	int mWidth;
+	int mHeight;
+	
     private int mProgram;
     private int mTexName = 0;
     private SurfaceTexture mSurface;
@@ -65,8 +71,11 @@ public class  GLCameraRenderThread extends Thread{
     private FloatBuffer mTexCoordBuffer;
     private ShortBuffer mDrawListBuffer;
     
-    public GLCameraRenderThread(SurfaceTexture surface){
+    private final int mFilter;
+    
+    public GLCameraRenderThread(SurfaceTexture surface, int filter){
     	mSurface = surface;
+    	mFilter = filter;
     }
     
     private static String readRawTextFile(Context context, int resId){
@@ -95,9 +104,27 @@ public class  GLCameraRenderThread extends Thread{
 		int vertexShader = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
 		int fragmentShader = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
 		
-		String vertexShaderCode = readRawTextFile(app, R.raw.vertex);
-		String fragmentShaderCode = readRawTextFile(app, R.raw.fragment_fish_eye);
+		String vertexShaderCode = readRawTextFile(app, R.raw.vertex);		
+		String fragmentShaderCode;
 		
+		switch(mFilter){
+		case FILTER_GREY:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_grey_scale);			
+			break;
+		case FILTER_SEPIA_TONE:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_sepia_tone);			
+			break;
+		case FILTER_NEGATIVE_COLOR:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_negative_color);
+			break;
+		case FILTER_FISHEYE:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_fish_eye);			
+			break;
+		default:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_no_effect);			
+			break;	
+		}
+				
 		GLES20.glShaderSource(vertexShader, vertexShaderCode);
 		GLES20.glShaderSource(fragmentShader, fragmentShaderCode);
 		
@@ -164,7 +191,7 @@ public class  GLCameraRenderThread extends Thread{
 		app.updateCamPreview();
 	}
 	
-	public void draw(){		
+	public void drawFrame(){		
 		GLES20.glUseProgram(mProgram);
 		
 		int positionHandler = GLES20.glGetAttribLocation(mProgram, "aPosition");
@@ -261,7 +288,7 @@ public class  GLCameraRenderThread extends Thread{
 	}
 	
 	@Override
-	public void run(){
+	public synchronized void run(){
 		initGL();
 		
 		mProgram = compileShader(FILTER_NONE);
@@ -274,14 +301,20 @@ public class  GLCameraRenderThread extends Thread{
 			GLES20.glViewport(0, 0, mWidth, mHeight);
 			GLES20.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
 			GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-			draw();
+			drawFrame();
 			if (!mEgl.eglSwapBuffers(mEglDisplay, mEglSurface)){
 				throw new RuntimeException("Cannot swap buffers");
 			}
+		
+			try{
+				wait();
+			}
+			catch (Exception e){
+				break;
+			}
+			
 		}
 	}
-	int mWidth;
-	int mHeight;
 	
 	synchronized public void setRegion(int width, int height){
 		mWidth = width;

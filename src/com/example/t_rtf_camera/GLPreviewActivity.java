@@ -7,6 +7,7 @@ import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.graphics.SurfaceTexture.OnFrameAvailableListener;
 import android.hardware.Camera;
+import android.util.Log;
 import android.view.Menu;
 import android.view.TextureView;
 import android.view.WindowManager;
@@ -17,6 +18,7 @@ public class GLPreviewActivity extends Activity implements TextureView.SurfaceTe
 
 
 	static private GLPreviewActivity appInst = null;
+	private GLCameraRenderThread mRenderThread;
 	
 	static public GLPreviewActivity getAppInstance(){
 		return appInst;
@@ -91,8 +93,12 @@ public class GLPreviewActivity extends Activity implements TextureView.SurfaceTe
 
 	@Override
 	public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-		// TODO Auto-generated method stub
-		//mGLSurfaceView.requestRender();
+		// TODO Auto-generated method stubi
+		int a = 1;
+		Log.i("tang", "here");
+		synchronized(mRenderThread){
+			mRenderThread.notify();
+		}
 	}
 	
 	public void updateCamPreview(){
@@ -107,9 +113,9 @@ public class GLPreviewActivity extends Activity implements TextureView.SurfaceTe
 	public void onSurfaceTextureAvailable(SurfaceTexture surface, int width,
 			int height) {
 		// TODO Auto-generated method stub
-		GLCameraRenderThread render = new GLCameraRenderThread(surface);
-		render.setRegion(width, height);
-		render.start();
+		mRenderThread = new GLCameraRenderThread(surface, GLCameraRenderThread.FILTER_SEPIA_TONE);
+		mRenderThread.setRegion(width, height);
+		mRenderThread.start();
 	}
 
 	@Override
