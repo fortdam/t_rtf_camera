@@ -11,27 +11,116 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.TextureView;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 
 
 
-public class GLPreviewActivity extends Activity implements TextureView.SurfaceTextureListener, OnFrameAvailableListener{
+
+public class GLPreviewActivity extends Activity implements OnFrameAvailableListener{
+	
+	class TextureCallback implements TextureView.SurfaceTextureListener {
+		private int mIndex;
+		private int mFilter;
+		
+		TextureCallback(int index, int filter){
+			mIndex = index;
+			mFilter = filter;
+		}
+
+		@Override
+		public void onSurfaceTextureAvailable(SurfaceTexture surface,
+				int width, int height) {
+			mRenderThread[mIndex] = new GLCameraRenderThread(surface, mFilter);
+			mRenderThread[mIndex].setRegion(width, height);
+			mRenderThread[mIndex].start();		
+		}
+
+		@Override
+		public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
+				int width, int height) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+	}
 
 
 	static private GLPreviewActivity appInst = null;
-	private GLCameraRenderThread mRenderThread;
+	private GLCameraRenderThread mRenderThread[] = new GLCameraRenderThread[9];
+	private int mActiveRender = 0;
 	
 	static public GLPreviewActivity getAppInstance(){
 		return appInst;
 	}
+	
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_glpreview);
 		
-		TextureView tempView = new TextureView(this);
-		tempView.setSurfaceTextureListener(this);
-		setContentView(tempView);
+		FrameLayout frame;
+		TextureView texture;
+		
+		frame = (FrameLayout)findViewById(R.id.gl_preview1);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(0, GLCameraRenderThread.FILTER_GREY));
+		frame.addView(texture);
 
+		frame = (FrameLayout)findViewById(R.id.gl_preview2);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(1, GLCameraRenderThread.FILTER_CYAN));
+		frame.addView(texture);
+		
+		frame = (FrameLayout)findViewById(R.id.gl_preview3);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(2, GLCameraRenderThread.FILTER_SEPIA_TONE));
+		frame.addView(texture);
+		
+		frame = (FrameLayout)findViewById(R.id.gl_preview4);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(3, GLCameraRenderThread.FILTER_NONE));
+		frame.addView(texture);
+
+		frame = (FrameLayout)findViewById(R.id.gl_preview5);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(4, GLCameraRenderThread.FILTER_FISHEYE));
+		frame.addView(texture);
+		
+		frame = (FrameLayout)findViewById(R.id.gl_preview6);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(5, GLCameraRenderThread.FILTER_NEGATIVE_COLOR));
+		frame.addView(texture);
+		
+		frame = (FrameLayout)findViewById(R.id.gl_preview7);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(6, GLCameraRenderThread.FILTER_SEPIA_TONE));
+		frame.addView(texture);
+		
+		frame = (FrameLayout)findViewById(R.id.gl_preview8);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(7, GLCameraRenderThread.FILTER_CYAN));
+		frame.addView(texture);
+		
+		frame = (FrameLayout)findViewById(R.id.gl_preview9);
+		texture = new TextureView(this);
+		texture.setSurfaceTextureListener(new TextureCallback(8, GLCameraRenderThread.FILTER_GREY));
+		frame.addView(texture);
+		
+		mActiveRender = 9;
+		
 		appInst = this;
 		
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -53,7 +142,7 @@ public class GLPreviewActivity extends Activity implements TextureView.SurfaceTe
         super.onResume();
         // The following call resumes a paused rendering thread.
         // If you de-allocated graphic objects for onPause()
-        // this is a good place to re-allocate them.
+        // this is a good place to re-allocate them.attachToGLContext
         //mGLSurfaceView.onResume();
     }
     
@@ -73,12 +162,22 @@ public class GLPreviewActivity extends Activity implements TextureView.SurfaceTe
 	    	catch (Exception e){
 	    		e.printStackTrace();
 	    	}
+	    	
+	    	mSurfaceTexture.detachFromGLContext();
     	}
     	else {
-    		mSurfaceTexture.attachToGLContext(texture);
+    		//mSurfaceTexture.attachToGLContext(texture);
     	}
     }
 
+    public void attachCameraTexture(int texture){
+    	mSurfaceTexture.attachToGLContext(texture);
+    }
+    
+    public void detachCAmeraTexture() {
+    	mSurfaceTexture.detachFromGLContext();
+    }
+    
 	/** A safe way to get an instance of the Camera object. */
 	public static Camera getCameraInstance(){
 	    Camera c = null;
@@ -94,10 +193,11 @@ public class GLPreviewActivity extends Activity implements TextureView.SurfaceTe
 	@Override
 	public void onFrameAvailable(SurfaceTexture surfaceTexture) {
 		// TODO Auto-generated method stubi
-		int a = 1;
-		Log.i("tang", "here");
-		synchronized(mRenderThread){
-			mRenderThread.notify();
+
+		for (int i=0; i<mActiveRender; i++){
+			synchronized(mRenderThread[i]){
+				mRenderThread[i].notify();
+			}
 		}
 	}
 	
@@ -108,49 +208,4 @@ public class GLPreviewActivity extends Activity implements TextureView.SurfaceTe
 	private Camera mCamera;
 	//private GLSurfaceView mGLSurfaceView;
 	private SurfaceTexture mSurfaceTexture = null;
-
-	@Override
-	public void onSurfaceTextureAvailable(SurfaceTexture surface, int width,
-			int height) {
-		// TODO Auto-generated method stub
-		mRenderThread = new GLCameraRenderThread(surface, GLCameraRenderThread.FILTER_SEPIA_TONE);
-		mRenderThread.setRegion(width, height);
-		mRenderThread.start();
-	}
-
-	@Override
-	public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width,
-			int height) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-		// TODO Auto-generated method stub
-		
-	}
-	
-
 }
-
-/*
-class PreviewGLSurfaceView extends GLSurfaceView {
-	public PreviewGLSurfaceView(Context context){
-		super(context);
-		
-		setEGLContextClientVersion(2);
-		//setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
-		
-		setRenderer(new PreviewGLRenderer());
-		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-
-	}
-}
-*/

@@ -32,12 +32,20 @@ public class  GLCameraRenderThread extends Thread{
 	public static final int FILTER_NEGATIVE_COLOR = 3;
 	public static final int FILTER_VIGNETTE = 4;
 	public static final int FILTER_FISHEYE = 5;
+	public static final int FILTER_CYAN = 6;
 	
     private static float shapeCoords[] = { 
-    	-0.9f,  0.9f, 0.0f,   // top left
-        -0.9f, -0.9f, 0.0f,   // bottom left
-        0.9f, -0.9f, 0.0f,   // bottom right
-        0.9f,  0.9f, 0.0f }; // top right
+    	-1.0f,  1.0f, 0.0f,   // top left
+        -1.0f, -1.0f, 0.0f,   // bottom left
+        1.0f, -1.0f, 0.0f,   // bottom right
+        1.0f,  1.0f, 0.0f }; // top right
+    
+    private static float shapeCoordsFishEye[] = { 
+    	-1.0f,  0.5625f, 0.0f,   // top left
+        -1.0f, -0.5625f, 0.0f,   // bottom left
+        1.0f, -0.5625f, 0.0f,   // bottom right
+        1.0f,  0.5625f, 0.0f }; // top right
+    
     
     //90 degree rotated
     private static float textureCoords[] = { 
@@ -120,6 +128,9 @@ public class  GLCameraRenderThread extends Thread{
 		case FILTER_FISHEYE:
 			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_fish_eye);			
 			break;
+		case FILTER_CYAN:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_cyan);			
+			break;	
 		default:
 			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_no_effect);			
 			break;	
@@ -156,7 +167,12 @@ public class  GLCameraRenderThread extends Thread{
 		bb.order(ByteOrder.nativeOrder());
 		
 		mVertexBuffer = bb.asFloatBuffer();
-		mVertexBuffer.put(shapeCoords);
+		if (FILTER_FISHEYE == mFilter){
+			mVertexBuffer.put(shapeCoordsFishEye);
+		}
+		else {
+			mVertexBuffer.put(shapeCoords);
+		}
 		mVertexBuffer.position(0);
 		
 		/*Vertex texture coord buffer*/
@@ -289,19 +305,27 @@ public class  GLCameraRenderThread extends Thread{
 	
 	@Override
 	public synchronized void run(){
-		initGL();
+		GLPreviewActivity app = GLPreviewActivity.getAppInstance();
 		
+		initGL();
+			
 		mProgram = compileShader(FILTER_NONE);
 		prepareBuffer();
 		
 		startPreview();
 		
 		while(true){
-			updatePreview();
-			GLES20.glViewport(0, 0, mWidth, mHeight);
-			GLES20.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-			GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-			drawFrame();
+			synchronized(app){
+				//
+				app.attachCameraTexture(mTexName);
+				app.updateCamPreview();
+				GLES20.glViewport(0, 0, mWidth, mHeight);
+				GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+				GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+				drawFrame();
+				app.detachCAmeraTexture();
+			}
+			
 			if (!mEgl.eglSwapBuffers(mEglDisplay, mEglSurface)){
 				throw new RuntimeException("Cannot swap buffers");
 			}
