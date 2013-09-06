@@ -11,5 +11,5 @@ const vec3 sepiaToneFactor = vec3(1.2, 1.0, 0.8);
 void main() {
   vec4 color = texture2D(sTexture, vTextureCoord);
   float monoColor = dot(color.rgb,monoMultiplier);
-  gl_FragColor = vec4(vec3(monoColor, monoColor, monoColor)*sepiaToneFactor, 1.0);
+  gl_FragColor = vec4(clamp(vec3(monoColor, monoColor, monoColor)*sepiaToneFactor, 0.0, 1.0), 1.0);
 }

@@ -33,6 +33,9 @@ public class  GLCameraRenderThread extends Thread{
 	public static final int FILTER_VIGNETTE = 4;
 	public static final int FILTER_FISHEYE = 5;
 	public static final int FILTER_CYAN = 6;
+	public static final int FILTER_RADIAL_BLUR = 7;
+	public static final int FILTER_H_MIRROR = 8;
+	public static final int FILTER_V_MIRROR = 9;
 	
     private static float shapeCoords[] = { 
     	-1.0f,  1.0f, 0.0f,   // top left
@@ -130,6 +133,15 @@ public class  GLCameraRenderThread extends Thread{
 			break;
 		case FILTER_CYAN:
 			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_cyan);			
+			break;	
+		case FILTER_RADIAL_BLUR:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_radial_blur);			
+			break;	
+		case FILTER_H_MIRROR:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_h_mirror);			
+			break;	
+		case FILTER_V_MIRROR:
+			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_v_mirror);			
 			break;	
 		default:
 			fragmentShaderCode = readRawTextFile(app, R.raw.fragment_no_effect);			

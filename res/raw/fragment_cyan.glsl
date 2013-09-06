@@ -11,5 +11,5 @@ const vec3 cyanFactor = vec3(0.8, 1.2, 1.2);
 void main() {
   vec4 color = texture2D(sTexture, vTextureCoord);
   float monoColor = dot(color.rgb,monoMultiplier);
-  gl_FragColor = vec4(vec3(monoColor, monoColor, monoColor)*cyanFactor, 1.0);
+  gl_FragColor = vec4(clamp(vec3(monoColor, monoColor, monoColor)*cyanFactor, 0.0, 1.0), 1.0);
 }

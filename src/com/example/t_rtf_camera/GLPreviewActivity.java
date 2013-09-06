@@ -77,6 +77,7 @@ public class GLPreviewActivity extends Activity implements OnFrameAvailableListe
 		frame = (FrameLayout)findViewById(R.id.gl_preview1);
 		texture = new TextureView(this);
 		texture.setSurfaceTextureListener(new TextureCallback(0, GLCameraRenderThread.FILTER_GREY));
+		
 		frame.addView(texture);
 
 		frame = (FrameLayout)findViewById(R.id.gl_preview2);
@@ -106,17 +107,17 @@ public class GLPreviewActivity extends Activity implements OnFrameAvailableListe
 		
 		frame = (FrameLayout)findViewById(R.id.gl_preview7);
 		texture = new TextureView(this);
-		texture.setSurfaceTextureListener(new TextureCallback(6, GLCameraRenderThread.FILTER_SEPIA_TONE));
+		texture.setSurfaceTextureListener(new TextureCallback(6, GLCameraRenderThread.FILTER_H_MIRROR));
 		frame.addView(texture);
 		
 		frame = (FrameLayout)findViewById(R.id.gl_preview8);
 		texture = new TextureView(this);
-		texture.setSurfaceTextureListener(new TextureCallback(7, GLCameraRenderThread.FILTER_CYAN));
+		texture.setSurfaceTextureListener(new TextureCallback(7, GLCameraRenderThread.FILTER_RADIAL_BLUR));
 		frame.addView(texture);
 		
 		frame = (FrameLayout)findViewById(R.id.gl_preview9);
 		texture = new TextureView(this);
-		texture.setSurfaceTextureListener(new TextureCallback(8, GLCameraRenderThread.FILTER_GREY));
+		texture.setSurfaceTextureListener(new TextureCallback(8, GLCameraRenderThread.FILTER_V_MIRROR));
 		frame.addView(texture);
 		
 		mActiveRender = 9;
