@@ -4,5 +4,6 @@
     <string name="app_name">t_rtf_camera</string>
     <string name="hello_world">Hello world!</string>
     <string name="menu_settings">Settings</string>
+    <string name="title_activity_glpreview">GLPreviewActivity</string>
 
 </resources>
