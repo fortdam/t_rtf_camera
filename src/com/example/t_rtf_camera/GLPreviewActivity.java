@@ -120,6 +120,11 @@ public class GLPreviewActivity extends Activity implements OnFrameAvailableListe
 										// TODO Auto-generated method stub
 										renderer.resumeRendering();
 										onFrameAvailable(null);
+										
+							    		Camera.Parameters params = mCamera.getParameters();
+
+							    		params.setPreviewSize(1920, 1080);
+							    		mCamera.setParameters(params);
 									}
 									
 								});
@@ -165,6 +170,11 @@ public class GLPreviewActivity extends Activity implements OnFrameAvailableListe
 					mRenderThread[i].resumeRendering();
 				}
 				onFrameAvailable(null);//Since nobody updated after last frame, we kick it again
+				
+	    		Camera.Parameters params = mCamera.getParameters();
+
+	    		params.setPreviewSize(960, 540);
+	    		mCamera.setParameters(params);
 			}
 			
 		});
