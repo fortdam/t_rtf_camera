@@ -70,6 +70,8 @@ public class  GLCameraRenderThread extends Thread{
     private int mTexName = 0;
     private SurfaceTexture mSurface;
     
+    private boolean mSuspend = false;
+    
     /*For EGL Setup*/
 	private EGL10 mEgl;
 	private EGLDisplay mEglDisplay;
@@ -83,6 +85,15 @@ public class  GLCameraRenderThread extends Thread{
     private ShortBuffer mDrawListBuffer;
     
     private final int mFilter;
+    
+    
+    public void suspendRendering(){
+    	mSuspend = true;
+    }
+    
+    public void resumeRendering(){
+    	mSuspend = false;
+    }
     
     public GLCameraRenderThread(SurfaceTexture surface, int filter){
     	mSurface = surface;
@@ -327,19 +338,22 @@ public class  GLCameraRenderThread extends Thread{
 		startPreview();
 		
 		while(true){
-			synchronized(app){
-				//
-				app.attachCameraTexture(mTexName);
-				app.updateCamPreview();
-				GLES20.glViewport(0, 0, mWidth, mHeight);
-				GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-				GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-				drawFrame();
-				app.detachCAmeraTexture();
-			}
 			
-			if (!mEgl.eglSwapBuffers(mEglDisplay, mEglSurface)){
-				throw new RuntimeException("Cannot swap buffers");
+			if (false == mSuspend) {
+				synchronized(app){
+					//
+					app.attachCameraTexture(mTexName);
+					app.updateCamPreview();
+					GLES20.glViewport(0, 0, mWidth, mHeight);
+					GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+					GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+					drawFrame();
+					app.detachCAmeraTexture();
+				}
+				
+				if (!mEgl.eglSwapBuffers(mEglDisplay, mEglSurface)){
+					throw new RuntimeException("Cannot swap buffers");
+				}
 			}
 		
 			try{
