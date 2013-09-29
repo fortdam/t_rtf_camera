@@ -66,6 +66,12 @@ public class  GLCameraRenderThread extends Thread{
 	int mWidth;
 	int mHeight;
 	
+	//XXX To fix a strange bug, which I cannot find the root cause.
+	//When zoom out/in the filter, there's always an unpleasant flash after zoom
+	//So I defer the size change for one frame.
+	int mDeferWidth;
+	int mDeferHeight;
+	
     private int mProgram;
     private int mTexName = 0;
     private SurfaceTexture mSurface;
@@ -345,6 +351,11 @@ public class  GLCameraRenderThread extends Thread{
 					app.attachCameraTexture(mTexName);
 					app.updateCamPreview();
 					GLES20.glViewport(0, 0, mWidth, mHeight);
+					if (mDeferWidth != 0){
+						mWidth = mDeferWidth;
+						mHeight = mDeferHeight;
+						mDeferWidth = 0;
+					}
 					GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 					GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 					drawFrame();
@@ -367,7 +378,14 @@ public class  GLCameraRenderThread extends Thread{
 	}
 	
 	synchronized public void setRegion(int width, int height){
-		mWidth = width;
-		mHeight = height;
+		if (mWidth != 0){
+			mDeferWidth = width;
+			mDeferHeight = height;
+		}
+		else {
+			mWidth = width;
+			mHeight = height;
+			mDeferWidth = 0;
+		}
 	}
 }
