@@ -6,5 +6,6 @@
     <string name="menu_settings">Settings</string>
     <string name="title_activity_glpreview">GLPreviewActivity</string>
     <string name="title_activity_select">SelectActivity</string>
+    <string name="title_activity_native_process">NativeProcessActivity</string>
 
 </resources>

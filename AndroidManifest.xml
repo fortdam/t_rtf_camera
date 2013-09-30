@@ -24,6 +24,15 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
+            android:name="com.example.t_rtf_camera.SelectActivity"
+            android:label="@string/title_activity_select" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name="com.example.t_rtf_camera.PreviewActivity"
             android:label="@string/app_name"
             android:screenOrientation="portrait"
@@ -35,12 +44,9 @@
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
         </activity>
         <activity
-            android:name="com.example.t_rtf_camera.SelectActivity"
-            android:label="@string/title_activity_select" >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            android:name="com.example.t_rtf_camera.NativeProcessActivity"
+            android:label="@string/title_activity_native_process" 
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
         </activity>
     </application>
 

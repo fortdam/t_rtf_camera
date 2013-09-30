@@ -32,6 +32,7 @@ public class SelectActivity extends Activity {
 	}
 	
 	public void startNDK(View view){
-		
+		Intent intent = new Intent(this, NativeProcessActivity.class);
+		startActivity(intent);
 	}
 }
