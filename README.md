@@ -13,4 +13,5 @@ iii. OpenGL ES 2.0
 
  iv. More...
 
+Probably could find more description on tangzm.com/blog
 
